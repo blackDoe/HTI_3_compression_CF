@@ -1,0 +1,26 @@
+INCLUDE = ./SSS/
+
+COMPILATEUR = g++
+
+OPTIONS = -g -lm
+
+SOURCES = main.cpp
+
+OBJECTS = main.o matrix.o fichiers.o pred.o dct.o
+
+EXECUTABLE = main
+
+$(EXECUTABLE): $(OBJECTS)
+	$(COMPILATEUR) $(OPTIONS) $(OBJECTS)  -o $(EXECUTABLE)
+
+main.o: main.cpp
+	$(COMPILATEUR) $(OPTIONS) -c main.cpp
+
+matrix.o: $(INCLUDE)matrix.cpp
+	$(COMPILATEUR) $(OPTIONS) -c $(INCLUDE)matrix.cpp
+fichiers.o: $(INCLUDE)fichiers.cpp
+	$(COMPILATEUR) $(OPTIONS) -c $(INCLUDE)fichiers.cpp
+pred.o: $(INCLUDE)pred.cpp
+	$(COMPILATEUR) $(OPTIONS) -c $(INCLUDE)pred.cpp
+dct.o: $(INCLUDE)dct.cpp
+	$(COMPILATEUR) $(OPTIONS) -c $(INCLUDE)dct.cpp
