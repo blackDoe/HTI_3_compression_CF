@@ -83,6 +83,8 @@ int main (int argc, char *argv[])
 
     fprintf(stderr, "Width = %d  Height = %d\n", W, H);
 
+    fprintf(stderr, "\n sqrt(16)= %d\n[", sqrt(16));
+
     unsigned char **x = alocamuc(H, W);
     unsigned char **xrec = alocamuc(H, W);
 
@@ -93,6 +95,7 @@ int main (int argc, char *argv[])
     for(i=0;i<H;i++)
         for(j=0;j<W;j++)
             err[i][j] = (int)x[i][j];
+
     fprintf(stderr, "\nentropie initiale = %g [bits/pixel]\n", calc_entropie(err, H, W));
 
 
@@ -104,29 +107,39 @@ int main (int argc, char *argv[])
 
 
 
-    for(i=0;i<H;i++)
-        for(j=0;j<W;j++)
+    for(i=0; i<H; i++)
+        for(j=0; j<W; j++)
             xd[i][j] = (double)x[i][j];
 
 
     dct2dim(xd, tdct, H, W);
     fprintf(stderr, "OK DCT directe\n");
 
-    ////////////////////////////////////////      TEST 1      ///////////////////////////////////////////////////////
 
 
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     double **matDct1= alocamd(H, W);
-    for(j=0;j<W;j++)
+    double zzz = 2/H;
+
+    for(j=0; j<W; j++)
         matDct1[0][j] = 1/(sqrt(H));
-    for(i=1;i<H;i++){
-        for(j=0;j<W;j++){
-            matDct1[i][j]= (sqrt(2/H))*cos(M_PI*(2*j+1)*i/(2*H));
+    for(i=1; i<H; i++){
+        for(j=0; j<W; j++){
+            matDct1[i][j]= sqrt(zzz) * cos(M_PI * (2 * j + 1) * i / (2 * H));
         }
     }
 
-    double **matDct2 = alocamd(W, H);
 
+
+    fprintf(stderr, "\nmatDct1[1] = \n[");
+    for(j = 0; j < W; j++) {
+        fprintf(stderr, " %g ", matDct1[1][j]);
+    }
+    fprintf(stderr, "]\n");
+
+
+    double **matDct2 = alocamd(W, H);
     /*
     for(j=0;j<H;j++)
         matDct2[0][j] = 1/(sqrt(W));
@@ -135,16 +148,16 @@ int main (int argc, char *argv[])
             matDct2[i][j]= (sqrt(2/W))*cos(M_PI*(2*j+1)*i/(2*W));
         }
     }
-
      */
-
     for(i=0;i<H;i++)
         for(j=0;j<W;j++)
             matDct2[i][j] = matDct1[j][i];
 
 
+    ////////////////////////////////////////      TEST 1      ///////////////////////////////////////////////////////
+
+/*
     double **tdct1 = alocamd(H, W); // image transformee test 1
-    double **transition = alocamd(H, H);
 
 
 
@@ -160,6 +173,41 @@ int main (int argc, char *argv[])
         }
         fprintf(stderr, "a = %d / %d \n",a,H-1);
     }
+
+*/
+
+
+    ////////////////////////////////////    TEST 1 bis     ///////////////////////////////////////////////////
+
+
+
+    double **tdct1b = alocamd(H,W); // image transition test 1bis
+    double **tdct1bis = alocamd(H,W); // image transformee test 1bis
+
+    int aa, bb, ii;
+
+    for (aa=0;aa<H;aa++)
+        for (bb = 0; bb <W; bb++)
+            for (ii = 0; ii < H; ii++)
+                tdct1b[aa][bb] += matDct1[aa][ii] * xd[ii][bb];
+
+
+
+    fprintf(stderr, "DCT1 effectuée\n");
+
+
+    int jj;
+    for (aa=0;aa<H;aa++) {
+        for (bb = 0; bb <W; bb++) {
+            for (jj = 0; jj < W; jj++) {
+                tdct1bis[aa][bb] += tdct1b[aa][jj] * matDct2[jj][bb] ;
+            }
+        }
+    }
+
+    fprintf(stderr, "DCT2 effectuée\n");
+
+
 
 
 
@@ -209,23 +257,32 @@ int main (int argc, char *argv[])
 
     ////////////////////////////     Comparaison avec la "vraie" dct      ////////////////////////////////////
 
-    fprintf(stderr, "tdct[3] = \n[");
+    fprintf(stderr, "\ntdct[3] = \n[");
     for(j = 0; j < W; j++) {
         fprintf(stderr, " %g ", tdct[3][j]);
     }
     fprintf(stderr, "]\n");
 
 
-
-    fprintf(stderr, "tdct1[3] = \n[");
+/*
+    fprintf(stderr, "\ntdct1[3] = \n[");
     for(j = 0; j < W; j++) {
         fprintf(stderr, " %g ", tdct1[3][j]);
     }
     fprintf(stderr, "]\n");
+*/
 
-     /*
 
-    fprintf(stderr, "tdct2[3] = \n[");
+    fprintf(stderr, "\ntdct1bis[3] = \n[");
+    for(j = 0; j < W; j++) {
+        fprintf(stderr, " %f ", tdct1bis[3][j]);
+    }
+    fprintf(stderr, "]\n");
+
+
+/*
+
+    fprintf(stderr, "\ntdct2[3] = \n[");
     for(j = 0; j < W; j++) {
         fprintf(stderr, " %g ", tdct2[3][j]);
     }
