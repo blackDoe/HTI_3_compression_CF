@@ -83,18 +83,23 @@ int main (int argc, char *argv[])
 
     fprintf(stderr, "Width = %d  Height = %d\n", W, H);
 
-    fprintf(stderr, "\n sqrt(16)= %d\n[", sqrt(16));
-
     unsigned char **x = alocamuc(H, W);
     unsigned char **xrec = alocamuc(H, W);
+
+    unsigned char **xrec1bis = alocamuc(H, W);
 
     lecture_pgm(nom, x); // x contient l'image initiale
 
     int **err = alocami(H, W); // allocation de la matric des erreurs de prediction
+    int **err1bis = alocami(H, W);
 
     for(i=0;i<H;i++)
         for(j=0;j<W;j++)
             err[i][j] = (int)x[i][j];
+
+    for(i=0;i<H;i++)
+        for(j=0;j<W;j++)
+            err1bis[i][j] = (int)x[i][j];
 
     fprintf(stderr, "\nentropie initiale = %g [bits/pixel]\n", calc_entropie(err, H, W));
 
@@ -104,6 +109,8 @@ int main (int argc, char *argv[])
     double **tdct = alocamd(H, W); // image transformee
     double **xd = alocamd(H, W);   // image initiale en double
     double **xrecd = alocamd(H, W); // image reconstruite
+
+    double **xrecd1bis = alocamd(H, W);
 
 
 
@@ -120,38 +127,29 @@ int main (int argc, char *argv[])
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     double **matDct1= alocamd(H, W);
-    double zzz = 2/H;
 
     for(j=0; j<W; j++)
         matDct1[0][j] = 1/(sqrt(H));
     for(i=1; i<H; i++){
         for(j=0; j<W; j++){
-            matDct1[i][j]= sqrt(zzz) * cos(M_PI * (2 * j + 1) * i / (2 * H));
+            matDct1[i][j]= (sqrt(2.)/sqrt((double) H)) * cos(M_PI * (2 * j + 1) * i / (2 * H));
         }
     }
-
-
-
-    fprintf(stderr, "\nmatDct1[1] = \n[");
-    for(j = 0; j < W; j++) {
-        fprintf(stderr, " %g ", matDct1[1][j]);
-    }
-    fprintf(stderr, "]\n");
 
 
     double **matDct2 = alocamd(W, H);
-    /*
-    for(j=0;j<H;j++)
-        matDct2[0][j] = 1/(sqrt(W));
-    for(i=1;i<W;i++){
-        for(j=0;j<H;j++){
-            matDct2[i][j]= (sqrt(2/W))*cos(M_PI*(2*j+1)*i/(2*W));
+    for(i=0;i<H;i++){
+        matDct2[i][0] = 1/(sqrt(W));
+        for(j=1;j<W;j++){
+            matDct2[i][j]= (sqrt(2.)/sqrt((double) W))*cos(M_PI*(2*i+1)*j/(2*W));
         }
     }
-     */
+
+    /*
     for(i=0;i<H;i++)
         for(j=0;j<W;j++)
             matDct2[i][j] = matDct1[j][i];
+   */
 
 
     ////////////////////////////////////////      TEST 1      ///////////////////////////////////////////////////////
@@ -186,18 +184,15 @@ int main (int argc, char *argv[])
 
     int aa, bb, ii;
 
-    for (aa=0;aa<H;aa++)
+    for (aa=0; aa<H; aa++)
         for (bb = 0; bb <W; bb++)
             for (ii = 0; ii < H; ii++)
                 tdct1b[aa][bb] += matDct1[aa][ii] * xd[ii][bb];
 
 
 
-    fprintf(stderr, "DCT1 effectuée\n");
-
-
     int jj;
-    for (aa=0;aa<H;aa++) {
+    for (aa=0; aa<H; aa++) {
         for (bb = 0; bb <W; bb++) {
             for (jj = 0; jj < W; jj++) {
                 tdct1bis[aa][bb] += tdct1b[aa][jj] * matDct2[jj][bb] ;
@@ -205,7 +200,7 @@ int main (int argc, char *argv[])
         }
     }
 
-    fprintf(stderr, "DCT2 effectuée\n");
+    fprintf(stderr, "DCT1bis directe effectuée\n");
 
 
 
@@ -257,12 +252,13 @@ int main (int argc, char *argv[])
 
     ////////////////////////////     Comparaison avec la "vraie" dct      ////////////////////////////////////
 
+/*
     fprintf(stderr, "\ntdct[3] = \n[");
     for(j = 0; j < W; j++) {
         fprintf(stderr, " %g ", tdct[3][j]);
     }
     fprintf(stderr, "]\n");
-
+*/
 
 /*
     fprintf(stderr, "\ntdct1[3] = \n[");
@@ -272,13 +268,13 @@ int main (int argc, char *argv[])
     fprintf(stderr, "]\n");
 */
 
-
+/*
     fprintf(stderr, "\ntdct1bis[3] = \n[");
     for(j = 0; j < W; j++) {
         fprintf(stderr, " %f ", tdct1bis[3][j]);
     }
     fprintf(stderr, "]\n");
-
+*/
 
 /*
 
@@ -293,8 +289,7 @@ int main (int argc, char *argv[])
     //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
-
-//Quantification des coefficients de la DCT
+//Quantification des coefficients de la DCT ... avec tdct
     for(i=1;i<H;i++)
         for(j=1;j<W;j++)
         {
@@ -306,11 +301,25 @@ int main (int argc, char *argv[])
     for(i=0;i<H;i++)
     {err[i][0] =  quantiz(tdct[i][0], 1); tdct[i][0] = (double)err[i][0];}
 
+
+//Quantification des coefficients de la DCT ... avec tdct1bis
+    for(i=1;i<H;i++)
+        for(j=1;j<W;j++)
+        {
+            err1bis[i][j] = quantiz(tdct1bis[i][j], step);
+            tdct1bis[i][j] = (double)err1bis[i][j];
+        }
+    for(j=0;j<W;j++)
+    {err1bis[0][j] =  quantiz(tdct1bis[0][j], 1); tdct1bis[0][j] = (double)err1bis[0][j];}
+    for(i=0;i<H;i++)
+    {err1bis[i][0] =  quantiz(tdct1bis[i][0], 1); tdct1bis[i][0] = (double)err1bis[i][0];}
+
     //FIN Quantification des coefficients de la DCT
 
 
     double entro = calc_entropie(err, H, W);
     fprintf(stderr, "\nentropie = %g [bits/pixel]\n", entro);
+
 
     dct2dim_inv(tdct, xrecd, H, W);
     for(i=0;i<H;i++)
@@ -321,10 +330,25 @@ int main (int argc, char *argv[])
     SaveIntImage_pgm_tronc(nom_err, err, H, W);
     ecriture_pgm(nom_out, xrec, W, H);
 
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+
+    dct2dim_inv(tdct1bis, xrecd1bis, H, W);
+    for(i=0;i<H;i++)
+        for(j=0;j<W;j++)
+            if(xrecd1bis[i][j] < 0.0)  xrec1bis[i][j] = 0;
+            else if(xrecd1bis[i][j] > 255.0)  xrec1bis[i][j] = 255;
+            else  xrec1bis[i][j] = (unsigned char)xrecd1bis[i][j];
+    SaveIntImage_pgm_tronc("err_dct1bis", err1bis, H, W);
+    ecriture_pgm("dct1bis", xrec1bis, W, H);
+
+    //////////////////////////////////////////////////////////////////////////////////////////////
+
     dalocd(xrecd,H);
     dalocd(xd,H);
     dalocd(tdct,H);
 
+    dalocd(xrecd1bis,H);
+    dalocd(tdct1bis,H);
 
     //FIN CODE DCT
 
