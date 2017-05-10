@@ -64,7 +64,7 @@ int SaveIntImage_pgm_tronc(char *nom, int **im, int Height, int Width)
 
 int main (int argc, char *argv[])
 {
-    char nom[200], nom_out[200], nom_err[300];
+    char nom[200], nom_out[200], nom_err[300], nom_out1bis[200], nom_err1bis[300];
     int W, H; // les dimensions de li'image: H = Height, W = Width
     int i, j;
 
@@ -76,6 +76,8 @@ int main (int argc, char *argv[])
     strcpy(nom, argv[1]);
     strcpy(nom_out, argv[1]); strcat(nom_out, ".out");
     strcpy(nom_err, argv[1]); strcat(nom_err, ".err");
+    strcpy(nom_out1bis, argv[1]); strcat(nom_out1bis, "_1bis.out");
+    strcpy(nom_err1bis, argv[1]); strcat(nom_err1bis, "_1bis.err");
 
     int step = atoi(argv[2]);
 
@@ -85,8 +87,9 @@ int main (int argc, char *argv[])
 
     unsigned char **x = alocamuc(H, W);
     unsigned char **xrec = alocamuc(H, W);
-
     unsigned char **xrec1bis = alocamuc(H, W);
+
+    double **xrecd = alocamd(H, W); // image reconstruite
 
     lecture_pgm(nom, x); // x contient l'image initiale
 
@@ -108,10 +111,6 @@ int main (int argc, char *argv[])
     // CODE DCT
     double **tdct = alocamd(H, W); // image transformee
     double **xd = alocamd(H, W);   // image initiale en double
-    double **xrecd = alocamd(H, W); // image reconstruite
-
-    double **xrecd1bis = alocamd(H, W);
-
 
 
     for(i=0; i<H; i++)
@@ -181,6 +180,12 @@ int main (int argc, char *argv[])
 
     double **tdct1b = alocamd(H,W); // image transition test 1bis
     double **tdct1bis = alocamd(H,W); // image transformee test 1bis
+
+    for(i=0;i<H;i++)
+        for(j=0;j<W;j++){
+            tdct1b[i][j] = 0.0;
+            tdct1bis[i][j] = 0.0;
+        }
 
     int aa, bb, ii;
 
@@ -330,16 +335,60 @@ int main (int argc, char *argv[])
     SaveIntImage_pgm_tronc(nom_err, err, H, W);
     ecriture_pgm(nom_out, xrec, W, H);
 
-    ///////////////////////////////////////////////////////////////////////////////////////////////
 
-    dct2dim_inv(tdct1bis, xrecd1bis, H, W);
+    /////////////////////////////// dct2dim_inv  TEST1bis   /////////////////////////////////////////////////
+
+    double **xrecd1b = alocamd(H, W);
+    double **xrecd1bis = alocamd(H, W);
+    for(i=0;i<H;i++)
+        for(j=0;j<W;j++)
+        {
+            xrecd1b[i][j] = 0.0;
+            xrecd1bis[i][j] = 0.0;
+        }
+
+
+    double **matDct1Inv = alocamd(W,H);
+
+    for(i=0;i<H;i++)
+        for(j=0;j<W;j++)
+            matDct1Inv[i][j] = matDct1[j][i];
+
+    double **matDct2Inv = alocamd(H,W);
+
+    for(i=0;i<H;i++)
+        for(j=0;j<W;j++)
+            matDct2Inv[i][j] = matDct2[j][i];
+
+
+    for (aa=0; aa<H; aa++)
+        for (bb = 0; bb <W; bb++)
+            for (ii = 0; ii < H; ii++)
+                xrecd1b[aa][bb] += matDct1Inv[aa][ii] * tdct1bis[ii][bb];
+
+
+    for (aa=0; aa<H; aa++) {
+        for (bb = 0; bb <W; bb++) {
+            for (jj = 0; jj < W; jj++) {
+                xrecd1bis[aa][bb] += xrecd1b[aa][jj] * matDct2Inv[jj][bb] ;
+            }
+        }
+    }
+
+    fprintf(stderr, "DCT1bis inverse effectué\n");
+
+
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
     for(i=0;i<H;i++)
         for(j=0;j<W;j++)
             if(xrecd1bis[i][j] < 0.0)  xrec1bis[i][j] = 0;
             else if(xrecd1bis[i][j] > 255.0)  xrec1bis[i][j] = 255;
             else  xrec1bis[i][j] = (unsigned char)xrecd1bis[i][j];
-    SaveIntImage_pgm_tronc("err_dct1bis", err1bis, H, W);
-    ecriture_pgm("dct1bis", xrec1bis, W, H);
+    SaveIntImage_pgm_tronc(nom_err1bis, err1bis, H, W);
+    ecriture_pgm(nom_out1bis, xrec1bis, W, H);
+
 
     //////////////////////////////////////////////////////////////////////////////////////////////
 
