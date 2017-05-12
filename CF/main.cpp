@@ -111,32 +111,6 @@ int main (int argc, char *argv[]){
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    double **matDct1= alocamd(H, W);
-
-    for ( j = 0; j < W; j++)
-        matDct1[0][j] = 1 / (sqrt(H));
-    for( i = 1 ; i < H; i++){
-        for(j = 0; j < W; j++){
-            matDct1[i][j]= (sqrt(2.) / sqrt((double) H)) * cos(M_PI * (2 * j + 1) * i / (2*H));
-        }
-    }
-
-
-    double **matDct2 = alocamd(W, H);
-
-    for ( i = 0; i < H; i++){
-        matDct2[i][0] = 1/(sqrt(W));
-        for ( j = 1; j < W; j++){
-            matDct2[i][j]= (sqrt(2.) / sqrt((double) W)) * cos(M_PI * (2 * i + 1) * j / (2*W));
-        }
-    }
-
-    // matDct2 par transposition
-    /*
-for ( i = 0; i < H; i++)
-    for ( j = 0; j < W; j++)
-        matDct2[i][j] = matDct1[j][i];
-*/
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -174,6 +148,34 @@ for ( i = 0; i < H; i++)
     ////////////////////////////////////    TEST 1 bis     ///////////////////////////////////////////////////
 
     /*
+
+    double **matDct1= alocamd(H, W);
+
+    for ( j = 0; j < W; j++)
+        matDct1[0][j] = 1 / (sqrt(H));
+    for( i = 1 ; i < H; i++){
+        for(j = 0; j < W; j++){
+            matDct1[i][j]= (sqrt(2.) / sqrt((double) H)) * cos(M_PI * (2 * j + 1) * i / (2*H));
+        }
+    }
+
+
+    double **matDct2 = alocamd(W, H);
+
+    for ( i = 0; i < H; i++){
+        matDct2[i][0] = 1/(sqrt(W));
+        for ( j = 1; j < W; j++){
+            matDct2[i][j]= (sqrt(2.) / sqrt((double) W)) * cos(M_PI * (2 * i + 1) * j / (2*W));
+        }
+    }
+
+    // matDct2 par transposition
+     /*
+for ( i = 0; i < H; i++)
+    for ( j = 0; j < W; j++)
+        matDct2[i][j] = matDct1[j][i];
+*/
+/*
 
     double **tdct1b = alocamd(H, W); // image transition test 1bis
     double **tdct1bis = alocamd(H, W);   // image transformee test 1bis
@@ -317,14 +319,6 @@ for ( i = 0; i < H; i++)
 
     ////////////////////////////////////////// dct2dim_inv  TEST1bis    ////////////////////////////////////////////////
 
-    double **xrecd1b = alocamd(H, W);
-    double **xrecd1bis = alocamd(H, W);
-
-    for(i = 0; i < H; i++)
-        for(j = 0; j < W; j++) {
-            xrecd1b[i][j] = 0.0;
-            xrecd1bis[i][j] = 0.0;
-        }
 
     double **matDct1Inv = alocamd(W, H);
 
@@ -337,6 +331,17 @@ for ( i = 0; i < H; i++)
     for(i = 0; i < H; i++)
         for(j = 0; j < W; j++)
             matDct2Inv[i][j] = matDct2[j][i];
+
+
+    double **xrecd1b = alocamd(H, W);
+    double **xrecd1bis = alocamd(H, W);
+
+    for(i = 0; i < H; i++)
+        for(j = 0; j < W; j++) {
+            xrecd1b[i][j] = 0.0;
+            xrecd1bis[i][j] = 0.0;
+        }
+
 
     for (aa = 0; aa < H; aa++)
         for (bb = 0; bb < W; bb++)
@@ -388,18 +393,44 @@ for ( i = 0; i < H; i++)
     double **tdct = alocamd(H, W);  // image transformee
     double **xd = alocamd(H, W);    // image initiale en double
 
-    double **xrecd1 = alocamd(H, W); // image reconstruite
 
     for (i = 0; i < H; i++)
       for (j = 0; j < W; j++)
         xd[i][j] = (double)(x[i][j]);
 
 
-    int Bx=16, By=16;
+    int Bx = 64, By = 64;
 
     dct2dim_bloc(xd, tdct, H, W, Bx, By, step);
 
     ///////////////////////////////    dct2dim_bloc TEST 1     ////////////////////////////////////////////////////
+
+    double **matDct1= alocamd(Bx, By);
+
+    for ( j = 0; j < By; j++)
+        matDct1[0][j] = 1 / (sqrt(Bx));
+    for( i = 1 ; i < Bx; i++){
+        for(j = 0; j < By; j++){
+            matDct1[i][j]= (sqrt(2.) / sqrt((double) Bx)) * cos(M_PI * (2 * j + 1) * i / (2*Bx));
+        }
+    }
+
+
+    double **matDct2 = alocamd(By, Bx);
+
+    for ( i = 0; i < Bx; i++){
+        matDct2[i][0] = 1/(sqrt(By));
+        for ( j = 1; j < By; j++){
+            matDct2[i][j]= (sqrt(2.) / sqrt((double) By)) * cos(M_PI * (2 * i + 1) * j / (2*By));
+        }
+    }
+
+    // matDct2 par transposition
+    /*
+for ( i = 0; i < H; i++)
+    for ( j = 0; j < W; j++)
+        matDct2[i][j] = matDct1[j][i];
+*/
 
 
     double **tdct0 = alocamd(H, W); // image transition test 1
@@ -414,21 +445,33 @@ for ( i = 0; i < H; i++)
     int nbx, nby;
     int a, b;
 
-    for (nbx = 0; nbx < (Bx/H); nbx++)
-        for (nby = 0; nby < (By/W); nby++)
+    for (nbx = 0; nbx < (H/Bx); nbx++)
+        for (nby = 0; nby < (W/By); nby++)
             for (a = 0; a < Bx; a++)
                 for (b = 0; b <By; b++)
                     for (i = 0; i < Bx; i++)
-                        tdct0[a+(nbx*Bx)][b+(nby*By)] += matDct1[a+(nbx*Bx)][i+(nbx*Bx)] * xd[i+(nbx*Bx)][b+(nby*By)];
+                        tdct0[a+(nbx*Bx)][b+(nby*By)] += matDct1[a][i] * xd[i+(nbx*Bx)][b+(nby*By)];
 
 
-    for (nbx = 0; nbx < (Bx/H); nbx++)
-        for (nby = 0; nby < (By/W); nby++)
+    for (nbx = 0; nbx < (H/Bx); nbx++)
+        for (nby = 0; nby < (W/By); nby++)
             for (a = 0; a < Bx; a++)
                 for (b = 0; b <By; b++)
                     for (j = 0; j < Bx; j++)
-                tdct1[a+(nbx*Bx)][b+(nby*By)] += tdct0[a+(nbx*Bx)][j+(nbx*Bx)] * matDct2[j+(nbx*Bx)][b+(nby*By)] ;
+                        tdct1[a+(nbx*Bx)][b+(nby*By)] += tdct0[a+(nbx*Bx)][j+(nby*By)] * matDct2[j][b];
 
+    //TEST
+    /*
+    fprintf(stderr, "\ntdct1[0] = \n[");
+    for(j = 0; j < W; j++)
+        fprintf(stderr, " %g ", tdct1[0][j]);
+    fprintf(stderr, "]\n");
+
+    fprintf(stderr, "\ntdct[0] = \n[");
+    for(j = 0; j < W; j++)
+        fprintf(stderr, " %g ", tdct[0][j]);
+    fprintf(stderr, "]\n");
+     */
 
     fprintf(stderr, "DCT block test1 directe effectuée\n");
 
@@ -446,11 +489,81 @@ for ( i = 0; i < H; i++)
         for(j = 0; j < W; j++)
             err1[i][j] = (int)tdct1[i][j];
 
+
+
     double entro = calc_entropie(err, H, W);
     fprintf(stderr, "\nentropie = %g [bits/pixel]\n", entro);
 
     dct2dim_bloc_inv(tdct, xrecd, H, W, Bx, By);
-    dct2dim_bloc_inv(tdct1, xrecd1, H, W, Bx, By);
+    // dct2dim_bloc_inv(tdct1, xrecd1, H, W, Bx, By);
+
+
+    /////////////////////////////////////    DCT par block inverse    ////////////////////////////////////////////
+
+    double **matDct1Inv = alocamd(Bx, By);
+
+    for (i = 0; i < By; i++)
+        for (j = 0; j < Bx; j++)
+            matDct1Inv[i][j] = matDct1[j][i];
+
+    double **matDct2Inv = alocamd(By, Bx);
+
+    for(i = 0; i < By; i++)
+        for(j = 0; j < Bx; j++)
+            matDct2Inv[i][j] = matDct2[j][i];
+
+
+    double **xrecd0 = alocamd(H, W); // image transisitoire
+    double **xrecd1 = alocamd(H, W); // image reconstruite
+
+
+    for(i = 0; i < H; i++)
+        for(j = 0; j < W; j++) {
+            xrecd0[i][j] = 0.0;
+            xrecd1[i][j] = 0.0;
+        }
+
+    for (nbx = 0; nbx < (H/Bx); nbx++)
+        for (nby = 0; nby < (W/By); nby++)
+            for (a = 0; a < Bx; a++)
+                for (b = 0; b <By; b++)
+                    for (i = 0; i < Bx; i++)
+                        xrecd0[a+(nbx*Bx)][b+(nby*By)] += matDct1Inv[a][i] * tdct1[i+(nbx*Bx)][b+(nby*By)];
+
+
+    for (nbx = 0; nbx < (H/Bx); nbx++)
+        for (nby = 0; nby < (W/By); nby++)
+            for (a = 0; a < Bx; a++)
+                for (b = 0; b <By; b++)
+                    for (j = 0; j < Bx; j++)
+                        xrecd1[a+(nbx*Bx)][b+(nby*By)] += xrecd0[a+(nbx*Bx)][j+(nby*By)] * matDct2Inv[j][b];
+
+    // TEST
+    /*
+    fprintf(stderr, "\nxrecd0[17] = \n[");
+    for(j = 0; j < W; j++)
+        fprintf(stderr, " %g ", xrecd0[17][j]);
+    fprintf(stderr, "]\n");
+
+
+    fprintf(stderr, "\nxrecd1[17] = \n[");
+    for(j = 0; j < W; j++)
+        fprintf(stderr, " %g ", xrecd1[17][j]);
+    fprintf(stderr, "]\n");
+
+
+    fprintf(stderr, "\nxrecd[17] = \n[");
+    for(j = 0; j < W; j++)
+        fprintf(stderr, " %d ", (int) (xrecd[17][j]));
+    fprintf(stderr, "]\n");
+     */
+
+
+    fprintf(stderr, "DCT1 par block inverse effectuée\n");
+
+
+    //////////////////////////////////////////////////////////////////////////////////////////////
+
 
     for(i = 0; i < H; i++)
         for(j = 0; j < W; j++) {
@@ -475,10 +588,11 @@ for ( i = 0; i < H; i++)
     SaveIntImage_pgm_tronc(nom_err, err, H, W);
     ecriture_pgm(nom_out, xrec, W, H);
 
-    SaveIntImage_pgm_tronc(nom_err1, err, H, W);
-    ecriture_pgm(nom_out1, xrec, W, H);
+    SaveIntImage_pgm_tronc(nom_err1, err1, H, W);
+    ecriture_pgm(nom_out1, xrec1, W, H);
 
     dalocd(xrecd, H);
+    dalocd(xrecd0,H);
     dalocd(xrecd1, H);
     dalocd(xd, H);
     dalocd(tdct, H);
