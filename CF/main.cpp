@@ -164,6 +164,41 @@ void My_dct2dim_inv(double **tdct1, double **xrecd1, int H, int W){
 }
 
 
+void quantification(double **tdct, int **err, int H, int W, int step){
+
+    int i, j;
+    for (i = 1; i < H; i++)
+        for (j = 1; j < W; j++) {
+            err[i][j] = quantiz(tdct[i][j], step);
+            tdct[i][j] = (double)(err[i][j]);
+        }
+    for (j = 0; j < W; j++) {
+        err[0][j] = quantiz(tdct[0][j], 1);
+        tdct[0][j] = (double)(err[0][j]);
+    }
+    for (i = 0; i < H; i++) {
+        err[i][0] = quantiz(tdct[i][0], 1);
+        tdct[i][0] = (double)(err[i][0]);
+    }
+
+}
+
+
+void finale(double **xrecd, unsigned char **xrec, int H, int W){
+
+    int i, j;
+    for (i = 0; i < H; i++)
+        for (j = 0; j < W; j++) {
+            if (xrecd[i][j] < 0.0)
+                xrec[i][j] = 0;
+            else if (xrecd[i][j] > 255.0)
+                xrec[i][j] = 255;
+            else
+                xrec[i][j] = (unsigned char) (xrecd[i][j]);
+        }
+
+}
+
 
 ////////////////////////////////////////     MAIN     //////////////////////////////////////////////////////////
 
@@ -192,16 +227,16 @@ int main (int argc, char *argv[]){
     fprintf(stderr, "Width = %d  Height = %d\n", W, H);
 
     unsigned char **x = alocamuc(H, W);
-    unsigned char **xrec = alocamuc(H, W);
-    unsigned char **xrec1 = alocamuc(H, W);
+    unsigned char **xrec = alocamuc(H, W);      // image finale en utilisant la dct donnée
+    unsigned char **xrec1 = alocamuc(H, W);     // Mon image finale
 
-    double **xrecd = alocamd(H, W); // image reconstruite
-    double **xrecd1 = alocamd(H, W); // Mon image reconstruite
+    double **xrecd = alocamd(H, W);     // image reconstruite
+    double **xrecd1 = alocamd(H, W);    // Mon image reconstruite
 
-    lecture_pgm(nom, x); // x contient l'image initiale
+    lecture_pgm(nom, x);    // x contient l'image initiale
 
-    int **err = alocami(H, W); // allocation de la matrice des erreurs de prediction
-    int **err1 = alocami(H, W);
+    int **err = alocami(H, W);      // allocation de la matrice des erreurs de prediction
+    int **err1 = alocami(H, W);     // allocation de notre matrice des erreurs de prediction
 
     for (i = 0; i < H; i++)
         for (j = 0; j < W; j++)
@@ -215,7 +250,6 @@ int main (int argc, char *argv[]){
 
 
     /////////////////////////////////////////   CODE DCT  ///////////////////////////////////////////////
-/*
 
 
     double **tdct = alocamd(H, W);  // image transformee
@@ -226,168 +260,57 @@ int main (int argc, char *argv[]){
         for (j = 0; j < W; j++)
             xd[i][j] = (double)(x[i][j]);
 
+
+    // Application de la compression dct
     dct2dim(xd, tdct, H, W);
     fprintf(stderr, "OK DCT directe\n");
-
 
     My_dct2dim(xd, tdct1, H, W);
     fprintf(stderr, "Ma DCT directe effectuée\n");
 
-    ////////////////////////////////////    TEST 1 bis     ///////////////////////////////////////////////////
 
+    // Quantification des coefficients
+    quantification(tdct, err, H, W, step);
+    quantification(tdct1, err1, H, W, step);
 
-    //  Exemple de produit matriciel classique C = A*B
-    /*  avec C de taille (H, W) , A de taille (H, K) et B de taille (K, W)
-    for (i = 0; i < H; i++)
-        for (j = 0; j < W; j++) {
-            int z;
-            for (z = 0; z < K; z++)
-                C[i][j] += A[i][z] * B[z][j];
-        }
-    */
-
-
-    ///////////////////////////////////////    Comparaison avec la "vraie" dct  ////////////////////////////////////////
-
-    /*
-    fprintf(stderr, "\ntdct[3] - tdct1[3] = \n[");
-    for(j = 0; j < W; j++)
-        fprintf(stderr, " %f ", tdct[3][j] - tdct1[3][j]);
-    fprintf(stderr, "]\n");
-    */
-    /*
-    fprintf(stderr, "\ntdct1[3] = \n[");
-    for(j = 0; j < W; j++)
-        fprintf(stderr, " %g ", tdct1[3][j]);
-    fprintf(stderr, "]\n");
-    */
-    /*
-    fprintf(stderr, "\ntdct1bis[3] = \n[");
-    for(j = 0; j < W; j++)
-        fprintf(stderr, " %f ", tdct1bis[3][j]);
-    fprintf(stderr, "]\n");
-    */
-    /*
-    fprintf(stderr, "\ntdct2[3] = \n[");
-    for(j = 0; j < W; j++)
-        fprintf(stderr, " %g ", tdct2[3][j]);
-    fprintf(stderr, "]\n");
-    */
-
-    //////////////////////////////////////////////////////////////////////////////////////////////////////
-
-/*
-
-    //  Quantification des coefficients de la DCT ... avec tdct
-
-    for (i = 1; i < H; i++)
-        for (j = 1; j < W; j++) {
-            err[i][j] = quantiz(tdct[i][j], step);
-            tdct[i][j] = (double)(err[i][j]);
-        }
-    for (j = 0; j < W; j++) {
-        err[0][j] = quantiz(tdct[0][j], 1);
-        tdct[0][j] = (double)(err[0][j]);
-        }
-    for (i = 0; i < H; i++) {
-        err[i][0] = quantiz(tdct[i][0], 1);
-        tdct[i][0] = (double)(err[i][0]);
-        }
-
-    //  Quantification des coefficients de la DCT ... avec tdct1
-
-    for (i = 1; i < H; i++)
-        for(j = 1; j < W; j++) {
-            err1[i][j] = quantiz(tdct1[i][j], step);
-            tdct1[i][j] = (double)(err1[i][j]);
-        }
-    for (j = 0; j < W; j++) {
-        err1[0][j] =  quantiz(tdct1[0][j], 1);
-        tdct1[0][j] = (double)(err1[0][j]);
-        }
-    for (i = 0; i < H; i++) {
-        err1[i][0] =  quantiz(tdct1[i][0], 1);
-        tdct1[i][0] = (double)(err1[i][0]);
-        }
-
-    //  FIN Quantification des coefficients de la DCT
-
+    // Calcul de l'entropie de la compression
     double entro = calc_entropie(err, H, W);
-    fprintf(stderr, "\nentropie = %g [bits/pixel]\n", entro);
-
+    fprintf(stderr, "\nentropie en utilisant la dct donnée = %g [bits/pixel]\n", entro);
     double Myentro = calc_entropie(err1, H, W);
     fprintf(stderr, "\nMon entropie = %g [bits/pixel]\n", Myentro);
 
+
+    // Application de la dct inverse (décompression)
     dct2dim_inv(tdct, xrecd, H, W);
+    My_dct2dim_inv(tdct1, xrecd1, H, W);
+    fprintf(stderr, "Ma DCT inverse effectuée\n");
 
-    for (i = 0; i < H; i++)
-        for (j = 0; j < W; j++) {
-            if (xrecd[i][j] < 0.0)
-                xrec[i][j] = 0;
-            else if (xrecd[i][j] > 255.0)
-                xrec[i][j] = 255;
-            else
-                xrec[i][j] = (unsigned char) (xrecd[i][j]);
-        }
 
+    // écriture de la matrice image finale
+    finale(xrecd, xrec, H, W);
     SaveIntImage_pgm_tronc(nom_err, err, H, W);
-
     ecriture_pgm(nom_out, xrec, W, H);
 
-    ////////////////////////////////////////  dct2dim_inv  TEST1bis    ////////////////////////////////////////////////
-
-
-    My_dct2dim_inv(tdct1, xrecd1, H, W);
-    fprintf(stderr, "My DCT inverse effectuée\n");
-
-    /*
-    fprintf(stderr, "\nxrecd[3] - xrecd1[3] = \n[");
-    for(j = 0; j < W; j++)
-        fprintf(stderr, " %g ", abs(xrecd[3][j] - xrecd1[3][j]));
-    fprintf(stderr, "]\n");
-     */
-
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-/*
-
-
-    for (i = 0; i < H; i++)
-        for (j = 0; j < W; j++) {
-            if (xrecd1[i][j] < 0.0)
-                xrec1[i][j] = 0;
-            else if (xrecd1[i][j] > 255.0)
-                xrec1[i][j] = 255;
-            else
-                xrec1[i][j] = (unsigned char) (xrecd1[i][j]);
-        }
-
+    finale(xrecd1, xrec1, H, W);
     SaveIntImage_pgm_tronc(nom_err_My, err1, H, W);
     ecriture_pgm(nom_out_My, xrec1, W, H);
 
-    /*
-    fprintf(stderr, "\nxrecd[3] - xrecd1[3] = \n[");
-    for(j = 0; j < W; j++)
-        fprintf(stderr, " %d ", (int)(xrecd[3][j] - xrecd1[3][j]));
-    fprintf(stderr, "]\n");
-    */
 
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-/*
+    // libération de mémoire
     dalocd(xrecd, H);
     dalocd(xd, H);
     dalocd(tdct, H);
-    //
     dalocd(xrecd1, H);
     dalocd(tdct1, H);
 
     //  FIN CODE DCT
 
-*/
 
-    /////////////////////////////////////////////////////////////////////////////////////////////
-    /////////////////////////////////////////////////////////////////////////////////////////////
-    /////////////////////////////////////////////////////////////////////////////////////////////
 
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/*
 
   // DCT PAR BLOCS
 
@@ -433,6 +356,7 @@ for ( i = 0; i < H; i++)
         matDct2[i][j] = matDct1[j][i];
 */
 
+    /*
 
     double **tdct0 = alocamd(H, W); // image transition test 1
     double **tdct1 = alocamd(H, W); // image transformee test 1
@@ -481,6 +405,7 @@ for ( i = 0; i < H; i++)
     fprintf(stderr, "]\n");
     */
 
+    /*
     fprintf(stderr, "DCT block test1 directe effectuée\n");
 
 
@@ -514,7 +439,7 @@ for ( i = 0; i < H; i++)
     fprintf(stderr, "]\n");
      */
 
-
+/*
     double entro = calc_entropie(err, H, W);
     fprintf(stderr, "\nentropie = %g [bits/pixel]\n", entro);
 
@@ -584,7 +509,7 @@ for ( i = 0; i < H; i++)
     fprintf(stderr, "]\n");
      */
 
-
+/*
     fprintf(stderr, "DCT1 par block inverse effectuée\n");
 
 
@@ -628,7 +553,7 @@ for ( i = 0; i < H; i++)
 
     //  FIN DCT PAR BLOCS
 
-
+*/
 
 
     //calcul entropie
