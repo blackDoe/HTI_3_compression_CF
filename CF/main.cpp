@@ -108,7 +108,6 @@ void My_dct2dim(double **xd, double **tdct1, int H, int W){
 }
 
 
-
 void My_dct2dim_inv(double **tdct1, double **xrecd1, int H, int W){
 
     // Valeurs utiles : on ne les calcule qu'une fois car long
@@ -118,8 +117,7 @@ void My_dct2dim_inv(double **tdct1, double **xrecd1, int H, int W){
 
     // Matrices utiles
     int i, j;
-    double **matDct1Inv = alocamd(W, H);
-
+    double **matDct1Inv = alocamd(W, H);        // transposée de matDct1
 
     for ( j = 0; j < W; j++)
         matDct1Inv[j][0] = 1 / sqrth;
@@ -130,7 +128,7 @@ void My_dct2dim_inv(double **tdct1, double **xrecd1, int H, int W){
     }
 
 
-    double **matDct2Inv = alocamd(H, W);
+    double **matDct2Inv = alocamd(H, W);        // transposée de matDct2
 
     for ( i = 0; i < H; i++){
         matDct2Inv[0][i] = 1 / sqrtw;
@@ -196,11 +194,129 @@ void finale(double **xrecd, unsigned char **xrec, int H, int W){
             else
                 xrec[i][j] = (unsigned char) (xrecd[i][j]);
         }
-
 }
 
 
+void My_dct2dim_bloc(double **xd, double **tdct1, int H, int W, int Bx, int By, int step){
+
+    // Valeurs utiles : on ne les calcule qu'une fois car long
+    double sqrtBx = sqrt((double)Bx);
+    double sqrtBy = sqrt((double)By);
+    double sqrt2 = sqrt(2.);
+
+    // Matrices utiles
+    int i, j;
+    double **matDct1= alocamd(Bx, By);
+
+    for ( j = 0; j < By; j++)
+        matDct1[0][j] = 1 / sqrtBx;
+    for( i = 1 ; i < Bx; i++){
+        for(j = 0; j < By; j++){
+            matDct1[i][j]= (sqrt2 / sqrtBx) * cos(M_PI * (2 * j + 1) * i / (2*Bx));
+        }
+    }
+
+    double **matDct2 = alocamd(By, Bx);
+
+    for ( i = 0; i < Bx; i++){
+        matDct2[i][0] = 1/sqrtBy;
+        for ( j = 1; j < By; j++){
+            matDct2[i][j]= (sqrt2 / sqrtBy) * cos(M_PI * (2 * i + 1) * j / (2*By));
+        }
+    }
+
+
+    double **tdct0 = alocamd(H, W); // image transition test 1
+
+    for (i = 0; i < H; i++)
+        for (j = 0; j < W; j++){
+            tdct0[i][j] = 0.0;
+            tdct1[i][j] = 0.0;
+        }
+
+    int nbx, nby;       // indice du bloc courant
+    int a, b;           // indice du pixel courant dans le bloc
+
+    for (nbx = 0; nbx < (H/Bx); nbx++)
+        for (nby = 0; nby < (W/By); nby++)
+            for (a = 0; a < Bx; a++)
+                for (b = 0; b <By; b++)
+                    for (i = 0; i < Bx; i++)
+                        tdct0[a+(nbx*Bx)][b+(nby*By)] += matDct1[a][i] * xd[i+(nbx*Bx)][b+(nby*By)];
+
+
+    for (nbx = 0; nbx < (H/Bx); nbx++)
+        for (nby = 0; nby < (W/By); nby++)
+            for (a = 0; a < Bx; a++)
+                for (b = 0; b <By; b++)
+                    for (j = 0; j < Bx; j++)
+                        tdct1[a+(nbx*Bx)][b+(nby*By)] += tdct0[a+(nbx*Bx)][j+(nby*By)] * matDct2[j][b];
+}
+
+
+void My_dct2dim_bloc_inv(double **tdct1, double **xrecd1, int H, int W, int Bx, int By){
+
+    // Valeurs utiles : on ne les calcule qu'une fois car long
+    double sqrtBx = sqrt((double)Bx);
+    double sqrtBy = sqrt((double)By);
+    double sqrt2 = sqrt(2.);
+
+    // Matrices utiles
+    int i, j;
+    double **matDct1Inv = alocamd(Bx, By);      // transposée de matDct1 par bloc
+
+    for ( j = 0; j < By; j++)
+        matDct1Inv[j][0] = 1 / sqrtBx;
+    for( i = 1 ; i < Bx; i++){
+        for(j = 0; j < By; j++){
+            matDct1Inv[j][i]= (sqrt2 / sqrtBx) * cos(M_PI * (2 * j + 1) * i / (2*Bx));
+        }
+    }
+
+    double **matDct2Inv = alocamd(By, Bx);      // transposée de matDct2 par bloc
+
+    for ( i = 0; i < Bx; i++){
+        matDct2Inv[0][i] = 1/sqrtBy;
+        for ( j = 1; j < By; j++){
+            matDct2Inv[j][i]= (sqrt2 / sqrtBy) * cos(M_PI * (2 * i + 1) * j / (2*By));
+        }
+    }
+
+
+    double **xrecd0 = alocamd(H, W); // image transisitoire
+
+    for(i = 0; i < H; i++)
+        for(j = 0; j < W; j++) {
+            xrecd0[i][j] = 0.0;
+            xrecd1[i][j] = 0.0;
+        }
+
+    int nbx, nby;       // indice du bloc courant
+    int a, b;           // indice du pixel courant dans le bloc
+
+    for (nbx = 0; nbx < (H/Bx); nbx++)
+        for (nby = 0; nby < (W/By); nby++)
+            for (a = 0; a < Bx; a++)
+                for (b = 0; b <By; b++)
+                    for (i = 0; i < Bx; i++)
+                        xrecd0[a+(nbx*Bx)][b+(nby*By)] += matDct1Inv[a][i] * tdct1[i+(nbx*Bx)][b+(nby*By)];
+
+
+    for (nbx = 0; nbx < (H/Bx); nbx++)
+        for (nby = 0; nby < (W/By); nby++)
+            for (a = 0; a < Bx; a++)
+                for (b = 0; b <By; b++)
+                    for (j = 0; j < Bx; j++)
+                        xrecd1[a+(nbx*Bx)][b+(nby*By)] += xrecd0[a+(nbx*Bx)][j+(nby*By)] * matDct2Inv[j][b];
+}
+
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////        /////////////////////////////////////////////////////////////
 ////////////////////////////////////////     MAIN     //////////////////////////////////////////////////////////
+///////////////////////////////////////////        /////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
 int main (int argc, char *argv[]){
@@ -249,8 +365,8 @@ int main (int argc, char *argv[]){
     fprintf(stderr, "\nentropie initiale = %g [bits/pixel]\n", calc_entropie(err, H, W));
 
 
-    /////////////////////////////////////////   CODE DCT  ///////////////////////////////////////////////
-
+    /////////////////////////////////////////   CODE DCT  ///////////////////////////////////////////////////////////
+/*
 
     double **tdct = alocamd(H, W);  // image transformee
     double **tdct1 = alocamd(H, W);  // Mon image transformee
@@ -266,7 +382,7 @@ int main (int argc, char *argv[]){
     fprintf(stderr, "OK DCT directe\n");
 
     My_dct2dim(xd, tdct1, H, W);
-    fprintf(stderr, "Ma DCT directe effectuée\n");
+    fprintf(stderr, "\nMa DCT directe effectuée\n");
 
 
     // Quantification des coefficients
@@ -283,7 +399,7 @@ int main (int argc, char *argv[]){
     // Application de la dct inverse (décompression)
     dct2dim_inv(tdct, xrecd, H, W);
     My_dct2dim_inv(tdct1, xrecd1, H, W);
-    fprintf(stderr, "Ma DCT inverse effectuée\n");
+    fprintf(stderr, "\nMa DCT inverse effectuée\n");
 
 
     // écriture de la matrice image finale
@@ -303,121 +419,40 @@ int main (int argc, char *argv[]){
     dalocd(xrecd1, H);
     dalocd(tdct1, H);
 
-    //  FIN CODE DCT
+*/
 
+    ////////////////////////////////////////    FIN CODE DCT     /////////////////////////////////////////////////////
 
 
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-/*
 
-  // DCT PAR BLOCS
+
+    //////////////////////////////////////    DCT PAR BLOCS    ///////////////////////////////////////////////////////
 
     double **tdct = alocamd(H, W);  // image transformee
+    double **tdct1 = alocamd(H, W); // Mon image transformee
     double **xd = alocamd(H, W);    // image initiale en double
-
 
     for (i = 0; i < H; i++)
       for (j = 0; j < W; j++)
         xd[i][j] = (double)(x[i][j]);
 
 
-    int Bx = 4, By = 4;
 
+    int Bx = 32, By = 32;
+
+    // Application de la dct par bloc (compression)
     dct2dim_bloc(xd, tdct, H, W, Bx, By, step);
-
-    ///////////////////////////////    dct2dim_bloc TEST 1     ////////////////////////////////////////////////////
-
-    double **matDct1= alocamd(Bx, By);
-
-    for ( j = 0; j < By; j++)
-        matDct1[0][j] = 1 / (sqrt(Bx));
-    for( i = 1 ; i < Bx; i++){
-        for(j = 0; j < By; j++){
-            matDct1[i][j]= (sqrt(2.) / sqrt((double) Bx)) * cos(M_PI * (2 * j + 1) * i / (2*Bx));
-        }
-    }
+    My_dct2dim_bloc(xd, tdct1, H, W, Bx, By, step);
+    fprintf(stderr, "\nMa DCT par bloc directe effectuée\n");
 
 
-    double **matDct2 = alocamd(By, Bx);
-
-    for ( i = 0; i < Bx; i++){
-        matDct2[i][0] = 1/(sqrt(By));
-        for ( j = 1; j < By; j++){
-            matDct2[i][j]= (sqrt(2.) / sqrt((double) By)) * cos(M_PI * (2 * i + 1) * j / (2*By));
-        }
-    }
-
-    // matDct2 par transposition
-    /*
-for ( i = 0; i < H; i++)
-    for ( j = 0; j < W; j++)
-        matDct2[i][j] = matDct1[j][i];
-*/
-
-    /*
-
-    double **tdct0 = alocamd(H, W); // image transition test 1
-    double **tdct1 = alocamd(H, W); // image transformee test 1
-
-    for (i = 0; i < H; i++)
-        for (j = 0; j < W; j++){
-            tdct0[i][j] = 0.0;
-            tdct1[i][j] = 0.0;
-        }
-
-    int nbx, nby;
-    int a, b;
-
-    for (nbx = 0; nbx < (H/Bx); nbx++)
-        for (nby = 0; nby < (W/By); nby++)
-            for (a = 0; a < Bx; a++)
-                for (b = 0; b <By; b++)
-                    for (i = 0; i < Bx; i++)
-                        tdct0[a+(nbx*Bx)][b+(nby*By)] += matDct1[a][i] * xd[i+(nbx*Bx)][b+(nby*By)];
-
-
-    for (nbx = 0; nbx < (H/Bx); nbx++)
-        for (nby = 0; nby < (W/By); nby++)
-            for (a = 0; a < Bx; a++)
-                for (b = 0; b <By; b++)
-                    for (j = 0; j < Bx; j++)
-                        tdct1[a+(nbx*Bx)][b+(nby*By)] += tdct0[a+(nbx*Bx)][j+(nby*By)] * matDct2[j][b];
-
-    // arrondi de tdct1 en entier
-    /*
-    for (a = 0; a < H; a++)
-        for (b = 0; b < W; b++)
-            tdct1[a][b] = (int)(tdct1[a][b] + 0.5);
-    */
-
-    //TEST
-    /*
-    fprintf(stderr, "\ntdct1[0] = \n[");
-    for(j = 0; j < W; j++)
-        fprintf(stderr, " %g ", tdct1[0][j]);
-    fprintf(stderr, "]\n");
-
-    fprintf(stderr, "\ntdct[0] = \n[");
-    for(j = 0; j < W; j++)
-        fprintf(stderr, " %g ", tdct[0][j]);
-    fprintf(stderr, "]\n");
-    */
-
-    /*
-    fprintf(stderr, "DCT block test1 directe effectuée\n");
-
-
-
-
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-
+    // définition des matrices d'erreurs (et quantification)
     for(i = 0; i < H; i++)
         for(j = 0; j < W; j++)
             err[i][j] = (int)tdct[i][j];
-
 
 
     for (i = 0; i < H; i++)
@@ -426,147 +461,41 @@ for ( i = 0; i < H; i++)
             tdct1[i][j] = (double) (err[i][j]);
         }
 
-    // TEST
-    /*
-    fprintf(stderr, "\nerr1[0] = \n[");
-    for(j = 0; j < W; j++)
-        fprintf(stderr, " %g ", err1[0][j]);
-    fprintf(stderr, "]\n");
 
-    fprintf(stderr, "\nerr[0] = \n[");
-    for(j = 0; j < W; j++)
-        fprintf(stderr, " %g ", err[0][j]);
-    fprintf(stderr, "]\n");
-     */
-
-/*
+    // Calcul de l'entropie de la compression
     double entro = calc_entropie(err, H, W);
-    fprintf(stderr, "\nentropie = %g [bits/pixel]\n", entro);
+    fprintf(stderr, "\nentropie de la dct par bloc donnée = %g [bits/pixel]\n", entro);
 
     double entro1 = calc_entropie(err1, H, W);
     fprintf(stderr, "\nMon entropie = %g [bits/pixel]\n", entro1);
 
+
+    // Application de la dct par bloc inverse (décompression)
     dct2dim_bloc_inv(tdct, xrecd, H, W, Bx, By);
+    My_dct2dim_bloc_inv(tdct1, xrecd1, H, W, Bx, By);
+    fprintf(stderr, "\nMa DCT par block inverse effectuée\n");
 
 
-    /////////////////////////////////////    DCT par block inverse    ////////////////////////////////////////////
-
-    double **matDct1Inv = alocamd(Bx, By);
-
-    for (i = 0; i < By; i++)
-        for (j = 0; j < Bx; j++)
-            matDct1Inv[i][j] = matDct1[j][i];
-
-    double **matDct2Inv = alocamd(By, Bx);
-
-    for(i = 0; i < By; i++)
-        for(j = 0; j < Bx; j++)
-            matDct2Inv[i][j] = matDct2[j][i];
-
-
-    double **xrecd0 = alocamd(H, W); // image transisitoire
-  //  double **xrecd1 = alocamd(H, W); // image reconstruite
-
-
-    for(i = 0; i < H; i++)
-        for(j = 0; j < W; j++) {
-            xrecd0[i][j] = 0.0;
-            xrecd1[i][j] = 0.0;
-        }
-
-    for (nbx = 0; nbx < (H/Bx); nbx++)
-        for (nby = 0; nby < (W/By); nby++)
-            for (a = 0; a < Bx; a++)
-                for (b = 0; b <By; b++)
-                    for (i = 0; i < Bx; i++)
-                        xrecd0[a+(nbx*Bx)][b+(nby*By)] += matDct1Inv[a][i] * tdct1[i+(nbx*Bx)][b+(nby*By)];
-
-
-    for (nbx = 0; nbx < (H/Bx); nbx++)
-        for (nby = 0; nby < (W/By); nby++)
-            for (a = 0; a < Bx; a++)
-                for (b = 0; b <By; b++)
-                    for (j = 0; j < Bx; j++)
-                        xrecd1[a+(nbx*Bx)][b+(nby*By)] += xrecd0[a+(nbx*Bx)][j+(nby*By)] * matDct2Inv[j][b];
-
-    // TEST
-    /*
-    fprintf(stderr, "\nxrecd0[17] = \n[");
-    for(j = 0; j < W; j++)
-        fprintf(stderr, " %g ", xrecd0[17][j]);
-    fprintf(stderr, "]\n");
-
-
-    fprintf(stderr, "\nxrecd1[17] = \n[");
-    for(j = 0; j < W; j++)
-        fprintf(stderr, " %g ", xrecd1[17][j]);
-    fprintf(stderr, "]\n");
-
-
-    fprintf(stderr, "\nxrecd[17] = \n[");
-    for(j = 0; j < W; j++)
-        fprintf(stderr, " %d ", (int) (xrecd[17][j]));
-    fprintf(stderr, "]\n");
-     */
-
-/*
-    fprintf(stderr, "DCT1 par block inverse effectuée\n");
-
-
-    //////////////////////////////////////////////////////////////////////////////////////////////
-
-
-    for(i = 0; i < H; i++)
-        for(j = 0; j < W; j++) {
-            if (xrecd[i][j] < 0.0)
-                xrec[i][j] = 0;
-            else if (xrecd[i][j] > 255.0)
-                xrec[i][j] = 255;
-            else
-                xrec[i][j] = (unsigned char) (xrecd[i][j]);
-        }
-
-    for(i = 0; i < H; i++)
-        for(j = 0; j < W; j++) {
-            if (xrecd1[i][j] < 0.0)
-                xrec1[i][j] = 0;
-            else if (xrecd1[i][j] > 255.0)
-                xrec1[i][j] = 255;
-            else
-                xrec1[i][j] = (unsigned char) (xrecd1[i][j]);
-        }
-
+    // écriture de la matrice image finale
+    finale(xrecd, xrec, H, W);
     SaveIntImage_pgm_tronc(nom_err, err, H, W);
     ecriture_pgm(nom_out, xrec, W, H);
 
+    finale(xrecd1, xrec1, H, W);
     SaveIntImage_pgm_tronc(nom_err_My, err1, H, W);
     ecriture_pgm(nom_out_My, xrec1, W, H);
 
+
+    // libération de mémoire
     dalocd(xrecd, H);
-    dalocd(xrecd0,H);
     dalocd(xrecd1, H);
     dalocd(xd, H);
     dalocd(tdct, H);
-    dalocd(tdct0, H);
     dalocd(tdct1, H);
 
 
-    //  FIN DCT PAR BLOCS
+    ////////////////////////////////////////     FIN DCT PAR BLOCS    /////////////////////////////////////////////////
 
-*/
-
-
-    //calcul entropie
-    /*
-    entro = calc_entropie(err, H, W);
-    fprintf(stderr, "\nentropie = %g [bits/pixel]\n", entro);
-    */
-
-    SaveIntImage_pgm(nom_err, err, H, W);
-
-    ecriture_pgm(nom_out, xrec, W, H);
-
-    //FIN PREDICTION
 
     dalocuc(x, H);
     dalocuc(xrec, H);
