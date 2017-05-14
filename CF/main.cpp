@@ -6,6 +6,9 @@
 #include "matrix.h"
 #include "pred.h"
 #include "dct.h"
+#include <complex>
+#include <iostream>
+using namespace std;
 
 int SaveIntImage_pgm(char *nom, int **im, int Height, int Width) {
 
@@ -347,6 +350,94 @@ void My_dct2dim_bloc_inv(double **tdct1, double **xrecd1, int H, int W, int Bx, 
 
 }
 
+void My_dst2dim_bloc(double **xd, double **tdst1, int H, int W, int Bx, int By, int step) {
+
+    // Valeurs utiles : on ne les calcule qu'une fois car long
+    double sqrtfx = sqrt(2./(double)(Bx+1));
+    double sqrtfy = sqrt(2./(double)(By+1));
+
+    int i, j;   // Pour la définition des matrices utiles
+
+    double **matDst1= alocamd(Bx, By);
+    for (i = 0; i < Bx; i++)
+        for(j = 0; j < By; j++)
+            matDst1[i][j] = sqrtfx * sin(M_PI * (j+1) * (i+1) / (Bx+1));
+
+    double **matDst2 = alocamd(By, Bx);
+    for (i = 0; i < Bx; i++)
+        for (j = 0; j < By; j++)
+            matDst2[i][j] = sqrtfy * sin(M_PI * (i+1) * (j+1) / (By+1));
+
+    // Image transition test 1
+    double **tdst0 = alocamd(H, W);
+    for (i = 0; i < H; i++)
+        for (j = 0; j < W; j++)
+            tdst0[i][j] = tdst1[i][j] = 0.0;
+
+    int nbx, nby;   // Indice du bloc courant
+    int a, b;       // Indice du pixel courant dans le bloc
+
+    for (nbx = 0; nbx < (H/Bx); nbx++)
+        for (nby = 0; nby < (W/By); nby++)
+            for (a = 0; a < Bx; a++)
+                for (b = 0; b <By; b++)
+                    for (i = 0; i < Bx; i++)
+                        tdst0[a+(nbx*Bx)][b+(nby*By)] += matDst1[a][i] * xd[i+(nbx*Bx)][b+(nby*By)];
+
+    for (nbx = 0; nbx < (H/Bx); nbx++)
+        for (nby = 0; nby < (W/By); nby++)
+            for (a = 0; a < Bx; a++)
+                for (b = 0; b <By; b++)
+                    for (j = 0; j < Bx; j++)
+                        tdst1[a+(nbx*Bx)][b+(nby*By)] += tdst0[a+(nbx*Bx)][j+(nby*By)] * matDst2[j][b];
+
+}
+
+void My_dst2dim_bloc_inv(double **tdst1, double **xrecd1, int H, int W, int Bx, int By) {
+
+    // Valeurs utiles : on ne les calcule qu'une fois car long
+    double sqrtfx = sqrt(2./(double)(Bx+1));
+    double sqrtfy = sqrt(2./(double)(By+1));
+
+    int i, j;    // Pour la définition des matrices utiles
+
+    // Transposée de matDst1 par blocs
+    double **matDst1Inv = alocamd(Bx, By);
+    for (i = 0; i < Bx; i++)
+        for(j = 0; j < By; j++)
+            matDst1Inv[j][i] = sqrtfx * sin(M_PI * (j+1) * (i+1) / (Bx+1));
+
+    // Transposée de matDst2 par bloc
+    double **matDst2Inv = alocamd(By, Bx);
+    for (i = 0; i < Bx; i++)
+        for (j = 0; j < By; j++)
+            matDst2Inv[j][i] = sqrtfy * sin(M_PI * (i+1) * (j+1) / (By+1));
+
+    // Image transitoire
+    double **xrecd0 = alocamd(H, W);
+    for (i = 0; i < H; i++)
+        for (j = 0; j < W; j++)
+            xrecd0[i][j] = xrecd1[i][j] = 0.0;
+
+    int nbx, nby;       // Indice du bloc courant
+    int a, b;           // Indice du pixel courant dans le bloc
+
+    for (nbx = 0; nbx < (H/Bx); nbx++)
+        for (nby = 0; nby < (W/By); nby++)
+            for (a = 0; a < Bx; a++)
+                for (b = 0; b <By; b++)
+                    for (i = 0; i < Bx; i++)
+                        xrecd0[a+(nbx*Bx)][b+(nby*By)] += matDst1Inv[a][i] * tdst1[i+(nbx*Bx)][b+(nby*By)];
+
+    for (nbx = 0; nbx < (H/Bx); nbx++)
+        for (nby = 0; nby < (W/By); nby++)
+            for (a = 0; a < Bx; a++)
+                for (b = 0; b <By; b++)
+                    for (j = 0; j < Bx; j++)
+                        xrecd1[a+(nbx*Bx)][b+(nby*By)] += xrecd0[a+(nbx*Bx)][j+(nby*By)] * matDst2Inv[j][b];
+
+}
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////        /////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////     MAIN     //////////////////////////////////////////////////////////
@@ -355,6 +446,8 @@ void My_dct2dim_bloc_inv(double **tdct1, double **xrecd1, int H, int W, int Bx, 
 
 int main (int argc, char *argv[]) {
 
+    complex<double> c(2,3);
+    cout << c << endl;
     char nom[200], nom_out[200], nom_err[300];
     char nom_out_My[200], nom_err_My[300];
     int W, H;   // Dimensions de l'image: H = Height, W = Width
@@ -399,10 +492,8 @@ int main (int argc, char *argv[]) {
 
     fprintf(stderr, "\nentropie initiale = %g [bits/pixel]\n", calc_entropie(err, H, W));
 
-
-    /////////////////////////////////////////   CODE DCT  ///////////////////////////////////////////////////////////
-/*
-
+    /////////////////////////////////////////   CODE DCT  //////////////////////////////////////////////////////////////
+    /*
     double **tdct = alocamd(H, W);  // image transformee
     double **tdct1 = alocamd(H, W);  // Mon image transformee
     double **xd = alocamd(H, W);    // image initiale en double
@@ -453,11 +544,10 @@ int main (int argc, char *argv[]) {
     dalocd(tdct, H);
     dalocd(xrecd1, H);
     dalocd(tdct1, H);
+    */
+    ////////////////////////////////////////    FIN CODE DCT     ///////////////////////////////////////////////////////
 
-*/
-    ////////////////////////////////////////    FIN CODE DCT     /////////////////////////////////////////////////////
-
-    /////////////////////////////////////////   CODE TSIN  ///////////////////////////////////////////////////////////
+    /////////////////////////////////////////   CODE TSIN  /////////////////////////////////////////////////////////////
     /*
     double **tdst1 = alocamd(H, W);  // Mon image transformee
     double **xd = alocamd(H, W);    // image initiale en double
@@ -491,54 +581,9 @@ int main (int argc, char *argv[]) {
     dalocd(xrecd1, H);
     dalocd(tdst1, H);
     */
-    ////////////////////////////////////////    FIN CODE TSIN     /////////////////////////////////////////////////////
+    ////////////////////////////////////////    FIN CODE TSIN     //////////////////////////////////////////////////////
 
-
-    /////////////////////////////////////////   TSIN via DFT ///////////////////////////////////////////////////////////
-
-    double **tdft1 = alocamd(H, W);  // Mon image transformee
-    double **xd = alocamd(H, W);    // image initiale en double
-
-    for (i = 0; i < H; i++)
-        for (j = 0; j < W; j++)
-            xd[i][j] = (double)(x[i][j]);
-
-    // Application de la compression dst
-    My_dst2dim(xd, tdst1, H, W);
-    fprintf(stderr, "\nMa DST directe effectuée\n");
-
-    // Quantification des coefficients
-    quantification(tdst1, err1, H, W, step);
-
-    // Calcul de l'entropie de la compression
-    double Myentro = calc_entropie(err1, H, W);
-    fprintf(stderr, "\nMon entropie = %g [bits/pixel]\n", Myentro);
-
-    // Application de la dst inverse (décompression)
-    My_dst2dim_inv(tdst1, xrecd1, H, W);
-    fprintf(stderr, "\nMa DST inverse effectuée\n");
-
-    // écriture de la matrice image finale
-    finale(xrecd1, xrec1, H, W);
-    SaveIntImage_pgm_tronc(nom_err_My, err1, H, W);
-    ecriture_pgm(nom_out_My, xrec1, W, H);
-
-    // libération de mémoire
-    dalocd(xd, H);
-    dalocd(xrecd1, H);
-    dalocd(tdst1, H);
-
-    ////////////////////////////////////////    FIN TSIN via TFD    /////////////////////////////////////////////////////
-
-
-
-
-    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-
-    //////////////////////////////////////    DCT PAR BLOCS    ///////////////////////////////////////////////////////
+    //////////////////////////////////////    DCT PAR BLOCS    /////////////////////////////////////////////////////////
     /*
     double **tdct = alocamd(H, W);  // image transformee
     double **tdct1 = alocamd(H, W); // Mon image transformee
@@ -602,8 +647,92 @@ int main (int argc, char *argv[]) {
     dalocd(tdct, H);
     dalocd(tdct1, H);
     */
+    ////////////////////////////////////////     FIN DCT PAR BLOCS    //////////////////////////////////////////////////
 
-    ////////////////////////////////////////     FIN DCT PAR BLOCS    /////////////////////////////////////////////////
+    //////////////////////////////////////    TSIN PAR BLOCS    ////////////////////////////////////////////////////////
+    /*
+    double **tdst1 = alocamd(H, W); // Mon image transformee
+    double **xd = alocamd(H, W);    // image initiale en double
+
+    for (i = 0; i < H; i++)
+      for (j = 0; j < W; j++)
+        xd[i][j] = (double)(x[i][j]);
+
+
+
+    int Bx = 8, By = 8;
+
+    // Application de la dct par bloc (compression)
+    My_dst2dim_bloc(xd, tdst1, H, W, Bx, By, step);
+    fprintf(stderr, "\nMa DST par bloc directe effectuée\n");
+
+
+    // définition des matrices d'erreurs (et quantification)
+    for (i = 0; i < H; i++)
+        for (j = 0; j < W; j++) {
+            err1[i][j] = quantiz(tdst1[i][j], step);
+            tdst1[i][j] = (double) (err1[i][j]);
+        }
+
+
+    // Calcul de l'entropie de la compression
+    double entro1 = calc_entropie(err1, H, W);
+    fprintf(stderr, "\nMon entropie = %g [bits/pixel]\n", entro1);
+
+
+    // Application de la dct par bloc inverse (décompression)
+    My_dst2dim_bloc_inv(tdst1, xrecd1, H, W, Bx, By);
+    fprintf(stderr, "\nMa DST par block inverse effectuée\n");
+
+
+    // écriture de la matrice image finale
+    finale(xrecd1, xrec1, H, W);
+    SaveIntImage_pgm_tronc(nom_err_My, err1, H, W);
+    ecriture_pgm(nom_out_My, xrec1, W, H);
+
+
+    // libération de mémoire
+    dalocd(xrecd1, H);
+    dalocd(xd, H);
+    dalocd(tdst1, H);
+    */
+    ///////////////////////////////////////     FIN TSIN  PAR BLOCS    /////////////////////////////////////////////////
+
+    /////////////////////////////////////////   TSIN via DFT ///////////////////////////////////////////////////////////
+    /*
+    double **tdst1 = alocamd(H, W);  // Mon image transformee
+    double **xd = alocamd(H, W);    // image initiale en double
+
+    for (i = 0; i < H; i++)
+        for (j = 0; j < W; j++)
+            xd[i][j] = (double)(x[i][j]);
+
+    // Application de la compression dst
+    My_dst2dim(xd, tdst1, H, W);
+    fprintf(stderr, "\nMa DST directe effectuée\n");
+
+    // Quantification des coefficients
+    quantification(tdst1, err1, H, W, step);
+
+    // Calcul de l'entropie de la compression
+    double Myentro = calc_entropie(err1, H, W);
+    fprintf(stderr, "\nMon entropie = %g [bits/pixel]\n", Myentro);
+
+    // Application de la dst inverse (décompression)
+    My_dst2dim_inv(tdst1, xrecd1, H, W);
+    fprintf(stderr, "\nMa DST inverse effectuée\n");
+
+    // écriture de la matrice image finale
+    finale(xrecd1, xrec1, H, W);
+    SaveIntImage_pgm_tronc(nom_err_My, err1, H, W);
+    ecriture_pgm(nom_out_My, xrec1, W, H);
+
+    // libération de mémoire
+    dalocd(xd, H);
+    dalocd(xrecd1, H);
+    dalocd(tdst1, H);
+    */
+    ////////////////////////////////////////    FIN TSIN via TFD    ////////////////////////////////////////////////////
 
     dalocuc(x, H);
     dalocuc(xrec, H);
