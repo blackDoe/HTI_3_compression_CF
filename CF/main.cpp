@@ -458,6 +458,43 @@ int main (int argc, char *argv[]) {
 */
     ////////////////////////////////////////    FIN CODE DCT     /////////////////////////////////////////////////////
 
+    /////////////////////////////////////////   CODE TSIN  ///////////////////////////////////////////////////////////
+
+    double **tdst1 = alocamd(H, W);  // Mon image transformee
+    double **xd = alocamd(H, W);    // image initiale en double
+
+    for (i = 0; i < H; i++)
+        for (j = 0; j < W; j++)
+            xd[i][j] = (double)(x[i][j]);
+
+    // Application de la compression dst
+    My_dst2dim(xd, tdst1, H, W);
+    fprintf(stderr, "\nMa DST directe effectuée\n");
+
+    // Quantification des coefficients
+    quantification(tdst1, err1, H, W, step);
+
+    // Calcul de l'entropie de la compression
+    double Myentro = calc_entropie(err1, H, W);
+    fprintf(stderr, "\nMon entropie = %g [bits/pixel]\n", Myentro);
+
+    // Application de la dst inverse (décompression)
+    My_dst2dim_inv(tdst1, xrecd1, H, W);
+    fprintf(stderr, "\nMa DST inverse effectuée\n");
+
+    // écriture de la matrice image finale
+    finale(xrecd1, xrec1, H, W);
+    SaveIntImage_pgm_tronc(nom_err_My, err1, H, W);
+    ecriture_pgm(nom_out_My, xrec1, W, H);
+
+    // libération de mémoire
+    dalocd(xd, H);
+    dalocd(xrecd1, H);
+    dalocd(tdst1, H);
+
+    ////////////////////////////////////////    FIN CODE TSIN     /////////////////////////////////////////////////////
+
+
 
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -465,7 +502,7 @@ int main (int argc, char *argv[]) {
 
 
     //////////////////////////////////////    DCT PAR BLOCS    ///////////////////////////////////////////////////////
-
+    /*
     double **tdct = alocamd(H, W);  // image transformee
     double **tdct1 = alocamd(H, W); // Mon image transformee
     double **xd = alocamd(H, W);    // image initiale en double
@@ -527,7 +564,7 @@ int main (int argc, char *argv[]) {
     dalocd(xd, H);
     dalocd(tdct, H);
     dalocd(tdct1, H);
-
+    */
 
     ////////////////////////////////////////     FIN DCT PAR BLOCS    /////////////////////////////////////////////////
 
