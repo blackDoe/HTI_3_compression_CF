@@ -1,2 +1,2 @@
-# HTI_3_compression_CF
-Implémentation Transformées Cosinus et Sinus pour CF1
+# HTI_compression
+Implémentation des Transformées en Cosinus et Sinus Discrets pour de la compression d'images
